@@ -21,6 +21,15 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'review', label: '확인' },
 ];
 
+// Sparkle icon for AI button
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z" />
+    </svg>
+  );
+}
+
 export default function NewMandalartPage() {
   const router = useRouter();
   const { user, ready, updateNickname } = useUser();
@@ -37,13 +46,84 @@ export default function NewMandalartPage() {
   const [tasks, setTasks] = useState<Record<number, string>>({});
   const [activeSubIdx, setActiveSubIdx] = useState(0);
 
+  // AI states
+  const [aiLoadingSub, setAiLoadingSub] = useState(false);
+  const [aiLoadingTask, setAiLoadingTask] = useState<number | null>(null); // sub position being loaded
+
   const stepIdx = STEPS.findIndex(s => s.key === step);
+  const period = startDate && endDate ? `${startDate} ~ ${endDate}` : '';
 
   const canNext = () => {
     if (step === 'info') return title && startDate && endDate;
     if (step === 'center') return centerGoal;
     if (step === 'sub') return Object.values(subGoals).filter(Boolean).length >= 1;
     return true;
+  };
+
+  // ── AI: 하위 목표 8개 추천 ──
+  const suggestSubGoals = async () => {
+    if (!centerGoal) return;
+    setAiLoadingSub(true);
+    try {
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'sub_goals', centerGoal, period }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const suggestions: string[] = data.suggestions;
+      const newSubs: Record<number, string> = {};
+      SUB_CENTER_POSITIONS.forEach((pos, i) => {
+        if (suggestions[i]) newSubs[pos] = suggestions[i];
+      });
+      setSubGoals(newSubs);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'AI 추천 실패');
+    } finally {
+      setAiLoadingSub(false);
+    }
+  };
+
+  // ── AI: 실천 항목 8개 추천 ──
+  const suggestTasks = async (subPos: number) => {
+    const subGoal = subGoals[subPos];
+    if (!subGoal || !centerGoal) return;
+
+    const blockCenter = SUB_TO_BLOCK[subPos];
+    if (!blockCenter) return;
+
+    setAiLoadingTask(subPos);
+    try {
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'tasks', centerGoal, subGoal, period }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const suggestions: string[] = data.suggestions;
+      const surr = getSurrounding(blockCenter);
+      const newTasks = { ...tasks };
+      surr.forEach((pos, i) => {
+        if (suggestions[i]) newTasks[pos] = suggestions[i];
+      });
+      setTasks(newTasks);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'AI 추천 실패');
+    } finally {
+      setAiLoadingTask(null);
+    }
+  };
+
+  // ── AI: 모든 하위 목표에 대해 실천 항목 일괄 추천 ──
+  const suggestAllTasks = async () => {
+    const filledSubs = SUB_CENTER_POSITIONS.filter(p => subGoals[p]);
+    for (const pos of filledSubs) {
+      await suggestTasks(pos);
+    }
   };
 
   const save = async () => {
@@ -79,7 +159,6 @@ export default function NewMandalartPage() {
 
   if (!ready) return null;
 
-  // Active sub-goals that have content
   const filledSubs = SUB_CENTER_POSITIONS.filter(p => subGoals[p]);
 
   return (
@@ -110,6 +189,14 @@ export default function NewMandalartPage() {
             </div>
           ))}
         </div>
+
+        {/* Error toast */}
+        {error && (
+          <div className="mb-4 p-2.5 bg-red-50 border border-red-100 rounded-lg flex items-center justify-between">
+            <p className="text-xs text-red-500">{error}</p>
+            <button onClick={() => setError('')} className="text-red-300 hover:text-red-500 text-sm ml-2">×</button>
+          </div>
+        )}
 
         {/* ── Step: Info ── */}
         {step === 'info' && (
@@ -169,12 +256,32 @@ export default function NewMandalartPage() {
         {/* ── Step: Sub goals ── */}
         {step === 'sub' && (
           <div className="anim-fade space-y-4">
-            <div>
-              <h2 className="text-base font-bold mb-0.5">하위 목표 8가지</h2>
-              <p className="text-xs text-[var(--color-text-muted)]">
-                &ldquo;<span className="font-medium text-[var(--color-text)]">{centerGoal}</span>&rdquo; 달성을 위한 8개 영역
-              </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-base font-bold mb-0.5">하위 목표 8가지</h2>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  &ldquo;<span className="font-medium text-[var(--color-text)]">{centerGoal}</span>&rdquo; 달성을 위한 8개 영역
+                </p>
+              </div>
+              <button
+                onClick={suggestSubGoals}
+                disabled={aiLoadingSub || !centerGoal}
+                className="btn btn-sm bg-gradient-to-r from-violet-500 to-blue-500 text-white hover:from-violet-600 hover:to-blue-600 disabled:opacity-40 shrink-0"
+              >
+                {aiLoadingSub ? (
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    AI 생성 중...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <SparkleIcon className="w-3.5 h-3.5" />
+                    AI 추천
+                  </span>
+                )}
+              </button>
             </div>
+
             <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
               {[30, 31, 32, 39, -1, 41, 48, 49, 50].map((pos) => {
                 if (pos === -1) {
@@ -185,7 +292,7 @@ export default function NewMandalartPage() {
                   );
                 }
                 return (
-                  <div key={pos} className="bg-[var(--color-sub-bg)] border-1.5 border-[var(--color-sub-border)] rounded-lg p-2">
+                  <div key={pos} className={`bg-[var(--color-sub-bg)] border-[1.5px] border-[var(--color-sub-border)] rounded-lg p-2 transition-all ${aiLoadingSub ? 'animate-pulse' : ''}`}>
                     <span className="text-[8px] text-[var(--color-text-muted)] block mb-0.5">
                       {SUB_CENTER_POSITIONS.indexOf(pos) + 1}
                     </span>
@@ -194,6 +301,7 @@ export default function NewMandalartPage() {
                       onChange={e => setSubGoals(p => ({ ...p, [pos]: e.target.value }))}
                       className="w-full bg-transparent text-xs font-medium outline-none placeholder:text-[var(--color-text-muted)]"
                       placeholder="목표"
+                      disabled={aiLoadingSub}
                     />
                   </div>
                 );
@@ -205,9 +313,30 @@ export default function NewMandalartPage() {
         {/* ── Step: Tasks ── */}
         {step === 'tasks' && (
           <div className="anim-fade space-y-4">
-            <div>
-              <h2 className="text-base font-bold mb-0.5">실천 항목</h2>
-              <p className="text-xs text-[var(--color-text-muted)]">각 하위 목표별 구체적인 실천 항목</p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-base font-bold mb-0.5">실천 항목</h2>
+                <p className="text-xs text-[var(--color-text-muted)]">각 하위 목표별 구체적 실천 (수치 + 행동)</p>
+              </div>
+              {filledSubs.length > 0 && (
+                <button
+                  onClick={suggestAllTasks}
+                  disabled={aiLoadingTask !== null}
+                  className="btn btn-sm bg-gradient-to-r from-violet-500 to-blue-500 text-white hover:from-violet-600 hover:to-blue-600 disabled:opacity-40 shrink-0"
+                >
+                  {aiLoadingTask !== null ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      생성 중...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <SparkleIcon className="w-3.5 h-3.5" />
+                      전체 AI 추천
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
             {filledSubs.length === 0 ? (
@@ -236,23 +365,43 @@ export default function NewMandalartPage() {
                   const blockCenter = SUB_TO_BLOCK[subPos];
                   if (!blockCenter) return null;
                   const surr = getSurrounding(blockCenter);
+                  const isLoading = aiLoadingTask === subPos;
 
                   return (
                     <div className="space-y-2">
-                      <div className="bg-[var(--color-sub-bg)] border border-[var(--color-sub-border)] rounded-lg px-3 py-1.5 text-xs font-medium">
-                        {subGoals[subPos]}
+                      <div className="flex items-center justify-between">
+                        <div className="bg-[var(--color-sub-bg)] border border-[var(--color-sub-border)] rounded-lg px-3 py-1.5 text-xs font-medium flex-1">
+                          {subGoals[subPos]}
+                        </div>
+                        <button
+                          onClick={() => suggestTasks(subPos)}
+                          disabled={aiLoadingTask !== null}
+                          className="ml-2 btn btn-sm text-[10px] bg-violet-50 text-violet-600 hover:bg-violet-100 border border-violet-200 disabled:opacity-40"
+                        >
+                          {isLoading ? (
+                            <span className="w-3 h-3 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
+                          ) : (
+                            <SparkleIcon className="w-3 h-3" />
+                          )}
+                        </button>
                       </div>
+
                       {surr.map((tp, i) => (
-                        <div key={tp} className="flex items-center gap-2">
+                        <div key={tp} className={`flex items-center gap-2 ${isLoading ? 'animate-pulse' : ''}`}>
                           <span className="text-[10px] text-[var(--color-text-muted)] w-3 shrink-0 text-right">{i + 1}</span>
                           <input
                             value={tasks[tp] || ''}
                             onChange={e => setTasks(p => ({ ...p, [tp]: e.target.value }))}
                             className="input text-xs"
-                            placeholder={`실천 항목 ${i + 1}`}
+                            placeholder={`실천 항목 ${i + 1} (수치 + 행동)`}
+                            disabled={isLoading}
                           />
                         </div>
                       ))}
+
+                      <p className="text-[9px] text-[var(--color-text-muted)] mt-1 pl-5">
+                        예시: &ldquo;매주 책 1권 완독&rdquo; &ldquo;주 4회 30분 러닝&rdquo; &ldquo;매일 영단어 50개 암기&rdquo;
+                      </p>
                     </div>
                   );
                 })()}
@@ -282,8 +431,35 @@ export default function NewMandalartPage() {
               <p className="text-[10px] text-[var(--color-text-muted)]">{startDate} ~ {endDate}</p>
             </div>
 
+            {/* Detail review - sub goals with their tasks */}
+            <div className="space-y-3">
+              {filledSubs.map(subPos => {
+                const blockCenter = SUB_TO_BLOCK[subPos];
+                if (!blockCenter) return null;
+                const surr = getSurrounding(blockCenter);
+                const subTasks = surr.map(p => tasks[p]).filter(Boolean);
+
+                return (
+                  <div key={subPos} className="card p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-sub-border)]" />
+                      <span className="text-xs font-semibold">{subGoals[subPos]}</span>
+                      <span className="text-[9px] text-[var(--color-text-muted)]">{subTasks.length}개 항목</span>
+                    </div>
+                    {subTasks.length > 0 && (
+                      <div className="ml-3.5 space-y-0.5">
+                        {subTasks.map((t, i) => (
+                          <p key={i} className="text-[11px] text-[var(--color-text-secondary)]">· {t}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
             {/* Mini grid preview */}
-            <div className="grid grid-cols-9 gap-px max-w-sm mx-auto">
+            <div className="grid grid-cols-9 gap-px max-w-xs mx-auto">
               {Array.from({ length: 81 }).map((_, pos) => {
                 const isC = pos === CENTER_POSITION;
                 const isS = SUB_CENTER_POSITIONS.includes(pos);
@@ -321,8 +497,6 @@ export default function NewMandalartPage() {
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[var(--color-sub-bg)] border border-[var(--color-sub-border)]" />하위</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[var(--color-cell-bg)] border border-[var(--color-border-light)]" />실천</span>
             </div>
-
-            {error && <p className="text-xs text-red-500 bg-red-50 p-2.5 rounded-lg">{error}</p>}
           </div>
         )}
 
