@@ -1,0 +1,289 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #f8f7f4;
+  --color-bg-card: #ffffff;
+  --color-bg-dark: #1a1a1a;
+  --color-bg-warm: #f5f0eb;
+  --color-text: #2d2d2d;
+  --color-text-light: #6b6b6b;
+  --color-text-muted: #9a9a9a;
+  --color-primary: #e85d3a;
+  --color-primary-light: #ff7f5c;
+  --color-primary-dark: #c44a2a;
+  --color-accent: #2d5a27;
+  --color-accent-light: #4a8c3f;
+  --color-success: #2d8a4e;
+  --color-success-light: #d4edda;
+  --color-success-bg: #edf7f0;
+  --color-border: #e5e2dd;
+  --color-border-light: #f0ede8;
+  --color-center: #fff3e0;
+  --color-center-border: #ffb74d;
+  --color-sub-center: #e8f5e9;
+  --color-sub-center-border: #81c784;
+  --color-task-default: #fafaf8;
+  --color-task-completed: #d4edda;
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: 'Noto Serif KR', Georgia, serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Grain texture overlay */
+.grain::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  z-index: 9999;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+/* Mandalart grid */
+.mandalart-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  gap: 2px;
+  aspect-ratio: 1;
+}
+
+.mandalart-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.65rem;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  word-break: keep-all;
+  line-height: 1.2;
+  position: relative;
+  overflow: hidden;
+}
+
+.mandalart-cell:hover {
+  transform: scale(1.05);
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.mandalart-cell.center {
+  background: var(--color-center);
+  border: 2px solid var(--color-center-border);
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.mandalart-cell.sub-center {
+  background: var(--color-sub-center);
+  border: 2px solid var(--color-sub-center-border);
+  font-weight: 600;
+  font-size: 0.65rem;
+}
+
+.mandalart-cell.task {
+  background: var(--color-task-default);
+  border: 1px solid var(--color-border-light);
+}
+
+.mandalart-cell.completed {
+  background: var(--color-task-completed) !important;
+  border-color: var(--color-success) !important;
+}
+
+.mandalart-cell.completed::after {
+  content: '✓';
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 0.55rem;
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+/* Block separators */
+.mandalart-grid > :nth-child(n+1):nth-child(-n+27) {
+  /* top 3 rows */
+}
+
+.block-separator-right {
+  border-right: 2px solid var(--color-border) !important;
+}
+
+.block-separator-bottom {
+  border-bottom: 2px solid var(--color-border) !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-check {
+  animation: checkPop 0.3s ease-out;
+}
+
+/* Button styles */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.625rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-text);
+  padding: 0.625rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+}
+
+.btn-outline:hover {
+  border-color: var(--color-text);
+  background: var(--color-bg-warm);
+}
+
+/* Progress bar */
+.progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border-light);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-success));
+  transition: width 0.5s ease;
+}
+
+/* Input styles */
+.input-field {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  background: white;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.input-field:focus {
+  border-color: var(--color-primary);
+}
+
+/* Card styles */
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-light);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border-color: var(--color-border);
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-SemiBold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Serif KR';
+  src: url('https://fonts.gstatic.com/s/notoserifkr/v20/3JnmSDn90Gmq2mr3blnHaTZXTihC8O1ZKH0.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
