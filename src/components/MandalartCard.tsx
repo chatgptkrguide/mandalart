@@ -10,7 +10,6 @@ interface Props {
     center_goal: string;
     start_date: string;
     end_date: string;
-    created_at: string;
     nickname?: string;
     completion_count?: number;
     total_tasks?: number;
@@ -18,58 +17,52 @@ interface Props {
   showAuthor?: boolean;
 }
 
-export default function MandalartCard({ mandalart, showAuthor = false }: Props) {
+export default function MandalartCard({ mandalart, showAuthor }: Props) {
   const router = useRouter();
-  const daysLeft = getDaysRemaining(mandalart.end_date);
   const ended = isMandalartEnded(mandalart.end_date);
   const active = isMandalartActive(mandalart.start_date, mandalart.end_date);
-  const totalTasks = mandalart.total_tasks || 0;
-  const completionCount = mandalart.completion_count || 0;
-  const progress = totalTasks > 0 ? Math.min(100, Math.round((completionCount / totalTasks) * 100)) : 0;
+  const days = getDaysRemaining(mandalart.end_date);
+  const total = mandalart.total_tasks || 0;
+  const done = mandalart.completion_count || 0;
+  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
 
   return (
-    <div
+    <button
       onClick={() => router.push(`/mandalart/${mandalart.id}`)}
-      className="card p-5 cursor-pointer group"
+      className="card card-hover p-4 text-left w-full group"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          {showAuthor && mandalart.nickname && (
-            <p className="text-xs text-[var(--color-text-muted)] mb-1">{mandalart.nickname}</p>
-          )}
-          <h3 className="font-semibold text-base truncate group-hover:text-[var(--color-primary)] transition-colors">
-            {mandalart.title}
-          </h3>
-        </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ml-2 ${
-          ended
-            ? 'bg-gray-100 text-gray-500'
-            : active
-            ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
-            : 'bg-blue-50 text-blue-500'
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <h3 className="font-semibold text-sm truncate group-hover:text-[var(--color-primary)] transition-colors leading-snug">
+          {mandalart.title}
+        </h3>
+        <span className={`text-[10px] px-1.5 py-px rounded-full whitespace-nowrap shrink-0 font-medium ${
+          ended ? 'bg-gray-100 text-gray-400'
+            : active ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
+            : 'bg-blue-50 text-blue-400'
         }`}>
           {ended ? '종료' : active ? '진행 중' : '예정'}
         </span>
       </div>
 
-      <p className="text-sm text-[var(--color-text-light)] mb-4 line-clamp-1">
-        {mandalart.center_goal}
-      </p>
+      <p className="text-xs text-[var(--color-text-muted)] truncate mb-3">{mandalart.center_goal}</p>
 
-      <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-3">
+      <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)] mb-2">
         <span>{formatDate(mandalart.start_date)} ~ {formatDate(mandalart.end_date)}</span>
-        {!ended && active && (
-          <span className="text-[var(--color-primary)] font-medium">D-{daysLeft}</span>
-        )}
+        {active && !ended && <span className="text-[var(--color-primary)] font-medium">D-{days}</span>}
       </div>
 
-      <div className="progress-bar mb-2">
-        <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+      <div className="bar mb-1.5">
+        <div className="bar-fill" style={{ width: `${pct}%` }} />
       </div>
-      <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-        <span>{completionCount}회 달성</span>
-        <span>{progress}%</span>
+
+      <div className="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+        {showAuthor && mandalart.nickname ? (
+          <span>{mandalart.nickname}</span>
+        ) : (
+          <span>{done}회 달성</span>
+        )}
+        <span>{pct}%</span>
       </div>
-    </div>
+    </button>
   );
 }

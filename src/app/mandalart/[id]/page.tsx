@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/lib/useUser';
 import Header from '@/components/Header';
 import MandalartGrid from '@/components/MandalartGrid';
 import {
@@ -13,321 +14,238 @@ import {
   getTotalWeeks,
 } from '@/lib/utils';
 
-interface Cell {
-  id: string;
-  position: number;
-  content: string;
-  cell_type: string;
-}
-
-interface Completion {
-  id: string;
-  cell_id: string;
-  week_number: number;
-  completed_at: string;
-}
-
-interface Mandalart {
-  id: string;
-  user_id: string;
-  title: string;
-  center_goal: string;
-  start_date: string;
-  end_date: string;
-  is_public: boolean;
-  created_at: string;
-  nickname?: string;
-  isOwner: boolean;
+interface Cell { id: string; position: number; content: string; cell_type: string; }
+interface Completion { id: string; cell_id: string; week_number: number; completed_at: string; }
+interface MandalartData {
+  id: string; user_id: string; title: string; center_goal: string;
+  start_date: string; end_date: string; is_public: boolean;
+  nickname?: string; isOwner: boolean;
 }
 
 export default function MandalartDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const [mandalart, setMandalart] = useState<Mandalart | null>(null);
+  const { user, ready, updateNickname } = useUser();
+  const [m, setM] = useState<MandalartData | null>(null);
   const [cells, setCells] = useState<Cell[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCell, setSelectedCell] = useState<Cell | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [delModal, setDelModal] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const load = useCallback(async () => {
+    if (!user) return;
     try {
-      const res = await fetch(`/api/mandalarts/${id}`);
-      if (!res.ok) {
-        router.push('/dashboard');
-        return;
-      }
+      const res = await fetch(`/api/mandalarts/${id}?userId=${user.id}`);
+      if (!res.ok) { router.push('/'); return; }
       const data = await res.json();
-      setMandalart(data.mandalart);
+      setM(data.mandalart);
       setCells(data.cells);
       setCompletions(data.completions);
-    } catch {
-      router.push('/dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }, [id, router]);
+    } catch { router.push('/'); }
+    finally { setLoading(false); }
+  }, [id, user, router]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { if (ready && user) load(); }, [ready, user, load]);
 
-  const handleToggleComplete = async (cellId: string, isCompleted: boolean) => {
-    try {
-      const res = await fetch(`/api/mandalarts/${id}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cellId,
-          action: isCompleted ? 'uncomplete' : 'complete',
-        }),
-      });
-
-      if (res.ok) {
-        fetchData();
-      }
-    } catch {
-      // silent
-    }
+  const toggle = async (cellId: string, isDone: boolean) => {
+    if (!user) return;
+    await fetch(`/api/mandalarts/${id}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, cellId, action: isDone ? 'uncomplete' : 'complete' }),
+    });
+    load();
   };
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
-      await fetch(`/api/mandalarts/${id}`, { method: 'DELETE' });
-      router.push('/dashboard');
-    } catch {
-      setDeleting(false);
-    }
+  const del = async () => {
+    if (!user) return;
+    await fetch(`/api/mandalarts/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
+    router.push('/');
   };
 
-  if (loading || !mandalart) {
+  if (!ready || loading || !m) {
     return (
-      <div className="min-h-screen bg-[var(--color-bg)]">
-        <Header />
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen">
+        <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+        <div className="flex justify-center py-20">
+          <div className="w-6 h-6 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
-  const ended = isMandalartEnded(mandalart.end_date);
-  const active = isMandalartActive(mandalart.start_date, mandalart.end_date);
-  const daysLeft = getDaysRemaining(mandalart.end_date);
-  const currentWeek = getCurrentWeekNumber(mandalart.start_date);
-  const totalWeeks = getTotalWeeks(mandalart.start_date, mandalart.end_date);
+  const ended = isMandalartEnded(m.end_date);
+  const active = isMandalartActive(m.start_date, m.end_date);
+  const days = getDaysRemaining(m.end_date);
+  const week = getCurrentWeekNumber(m.start_date);
+  const totalW = getTotalWeeks(m.start_date, m.end_date);
   const taskCells = cells.filter(c => c.cell_type === 'task' && c.content);
-  const thisWeekCompletions = completions.filter(c => c.week_number === currentWeek);
-  const overallProgress = taskCells.length > 0
-    ? Math.round((completions.length / (taskCells.length * totalWeeks)) * 100)
-    : 0;
-  const weekProgress = taskCells.length > 0
-    ? Math.round((thisWeekCompletions.length / taskCells.length) * 100)
-    : 0;
+  const weekDone = completions.filter(c => c.week_number === week);
+  const overallPct = taskCells.length > 0
+    ? Math.round((completions.length / (taskCells.length * totalW)) * 100) : 0;
+  const weekPct = taskCells.length > 0
+    ? Math.round((weekDone.length / taskCells.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
-      <Header />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-                {mandalart.title}
-              </h1>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                ended ? 'bg-gray-100 text-gray-500'
+    <div className="min-h-screen">
+      <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        {/* Title bar */}
+        <div className="flex items-start justify-between gap-3 mb-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-lg font-bold truncate">{m.title}</h1>
+              <span className={`text-[10px] px-1.5 py-px rounded-full font-medium shrink-0 ${
+                ended ? 'bg-gray-100 text-gray-400'
                   : active ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
-                  : 'bg-blue-50 text-blue-500'
+                  : 'bg-blue-50 text-blue-400'
               }`}>
                 {ended ? '종료' : active ? '진행 중' : '예정'}
               </span>
             </div>
-            <p className="text-sm text-[var(--color-text-light)]">{mandalart.center_goal}</p>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              {formatDate(mandalart.start_date)} ~ {formatDate(mandalart.end_date)}
-              {!ended && active && (
-                <span className="text-[var(--color-primary)] ml-2 font-medium">D-{daysLeft}</span>
-              )}
-              {mandalart.nickname && !mandalart.isOwner && (
-                <span className="ml-2">by {mandalart.nickname}</span>
-              )}
+            <p className="text-xs text-[var(--color-text-muted)] truncate">{m.center_goal}</p>
+            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+              {formatDate(m.start_date)} ~ {formatDate(m.end_date)}
+              {active && !ended && <span className="text-[var(--color-primary)] ml-1.5 font-medium">D-{days}</span>}
+              {m.nickname && !m.isOwner && <span className="ml-1.5">by {m.nickname}</span>}
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            {mandalart.isOwner && (
-              <>
-                <button
-                  onClick={() => router.push(`/mandalart/${id}/log`)}
-                  className="btn-outline text-xs px-3 py-2"
-                >
-                  달성 로그
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="text-xs px-3 py-2 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  삭제
-                </button>
-              </>
-            )}
-          </div>
+          {m.isOwner && (
+            <div className="flex gap-1.5 shrink-0">
+              <button onClick={() => router.push(`/mandalart/${id}/log`)} className="btn btn-ghost btn-sm">로그</button>
+              <button onClick={() => setDelModal(true)} className="text-[11px] px-2 py-1 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">삭제</button>
+            </div>
+          )}
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-8">
+        <div className="grid lg:grid-cols-12 gap-6">
           {/* Grid */}
           <div className="lg:col-span-8">
-            <div className="card p-4 sm:p-6">
-              {mandalart.isOwner && active && (
-                <p className="text-xs text-[var(--color-text-muted)] mb-4 text-center">
-                  실천 항목을 클릭하면 이번 주 달성 여부를 표시할 수 있어요
+            <div className="card p-3 sm:p-5">
+              {m.isOwner && active && (
+                <p className="text-[10px] text-[var(--color-text-muted)] mb-3 text-center">
+                  실천 항목을 클릭하여 이번 주 달성을 표시하세요
                 </p>
               )}
               <MandalartGrid
                 cells={cells}
                 completions={completions}
-                mandalartId={id}
-                startDate={mandalart.start_date}
-                isOwner={mandalart.isOwner && active}
-                onToggleComplete={handleToggleComplete}
+                startDate={m.start_date}
+                isOwner={m.isOwner && active}
+                onToggle={toggle}
+                size="md"
               />
             </div>
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-4 space-y-4">
+          <div className="lg:col-span-4 space-y-3">
             {/* Stats */}
-            <div className="card p-5">
-              <h3 className="text-sm font-semibold mb-4">진행 현황</h3>
-
-              <div className="space-y-4">
+            <div className="card p-4">
+              <h3 className="text-xs font-semibold mb-3">진행 현황</h3>
+              <div className="space-y-3">
                 <div>
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="text-[var(--color-text-light)]">전체 진행률</span>
-                    <span className="font-medium">{overallProgress}%</span>
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className="text-[var(--color-text-muted)]">전체</span>
+                    <span className="font-medium">{overallPct}%</span>
                   </div>
-                  <div className="progress-bar">
-                    <div className="progress-bar-fill" style={{ width: `${overallProgress}%` }} />
-                  </div>
+                  <div className="bar"><div className="bar-fill" style={{ width: `${overallPct}%` }} /></div>
                 </div>
-
                 {active && (
                   <div>
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-[var(--color-text-light)]">이번 주 ({currentWeek}주차)</span>
-                      <span className="font-medium">{weekProgress}%</span>
+                    <div className="flex justify-between text-[10px] mb-1">
+                      <span className="text-[var(--color-text-muted)]">{week}주차</span>
+                      <span className="font-medium">{weekPct}%</span>
                     </div>
-                    <div className="progress-bar">
-                      <div
-                        className="progress-bar-fill"
-                        style={{
-                          width: `${weekProgress}%`,
-                          background: weekProgress === 100
-                            ? 'var(--color-success)'
-                            : undefined,
-                        }}
-                      />
+                    <div className="bar">
+                      <div className="bar-fill" style={{
+                        width: `${weekPct}%`,
+                        background: weekPct === 100 ? 'var(--color-success)' : undefined
+                      }} />
                     </div>
                   </div>
                 )}
               </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-[var(--color-border-light)]">
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-[var(--color-border-light)]">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-[var(--color-accent)]">{completions.length}</p>
-                  <p className="text-[10px] text-[var(--color-text-muted)]">총 달성 횟수</p>
+                  <p className="text-xl font-bold text-[var(--color-accent)]">{completions.length}</p>
+                  <p className="text-[9px] text-[var(--color-text-muted)]">총 달성</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-[var(--color-primary)]">{currentWeek}/{totalWeeks}</p>
-                  <p className="text-[10px] text-[var(--color-text-muted)]">현재 주차</p>
+                  <p className="text-xl font-bold text-[var(--color-primary)]">{week}/{totalW}</p>
+                  <p className="text-[9px] text-[var(--color-text-muted)]">주차</p>
                 </div>
               </div>
             </div>
 
-            {/* This week's tasks */}
-            {active && mandalart.isOwner && (
-              <div className="card p-5">
-                <h3 className="text-sm font-semibold mb-3">이번 주 할 일</h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
+            {/* Weekly checklist */}
+            {active && m.isOwner && taskCells.length > 0 && (
+              <div className="card p-4">
+                <h3 className="text-xs font-semibold mb-2">이번 주 할 일</h3>
+                <div className="space-y-1 max-h-56 overflow-y-auto">
                   {taskCells.map(cell => {
-                    const completed = thisWeekCompletions.some(c => c.cell_id === cell.id);
+                    const done = weekDone.some(c => c.cell_id === cell.id);
                     return (
                       <button
                         key={cell.id}
-                        onClick={() => handleToggleComplete(cell.id, completed)}
-                        className={`w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all ${
-                          completed
+                        onClick={() => toggle(cell.id, done)}
+                        className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] transition-all ${
+                          done
                             ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
-                            : 'bg-[var(--color-bg)] text-[var(--color-text-light)] hover:bg-[var(--color-bg-warm)]'
+                            : 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-warm)]'
                         }`}
                       >
-                        <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                          completed
-                            ? 'bg-[var(--color-success)] border-[var(--color-success)] text-white'
-                            : 'border-[var(--color-border)]'
+                        <span className={`w-3.5 h-3.5 rounded-full border-[1.5px] flex items-center justify-center shrink-0 text-[7px] font-bold transition-all ${
+                          done ? 'bg-[var(--color-success)] border-[var(--color-success)] text-white' : 'border-[var(--color-border)]'
                         }`}>
-                          {completed && <span className="text-[8px]">✓</span>}
+                          {done && '✓'}
                         </span>
-                        <span className={completed ? 'line-through' : ''}>{cell.content}</span>
+                        <span className={done ? 'line-through opacity-70' : ''}>{cell.content}</span>
                       </button>
                     );
                   })}
-                  {taskCells.length === 0 && (
-                    <p className="text-xs text-[var(--color-text-muted)]">실천 항목이 없습니다</p>
-                  )}
                 </div>
               </div>
             )}
 
-            {/* Recent completions */}
-            <div className="card p-5">
-              <h3 className="text-sm font-semibold mb-3">최근 달성</h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {completions.slice(0, 10).map(comp => {
-                  const cell = cells.find(c => c.id === comp.cell_id);
-                  return (
-                    <div key={comp.id} className="flex items-center gap-2 text-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] shrink-0" />
-                      <span className="text-[var(--color-text-light)] truncate">{cell?.content || '—'}</span>
-                      <span className="text-[var(--color-text-muted)] whitespace-nowrap ml-auto text-[10px]">
-                        {comp.week_number}주차
-                      </span>
-                    </div>
-                  );
-                })}
-                {completions.length === 0 && (
-                  <p className="text-xs text-[var(--color-text-muted)]">아직 달성 기록이 없어요</p>
-                )}
+            {/* Recent activity */}
+            {completions.length > 0 && (
+              <div className="card p-4">
+                <h3 className="text-xs font-semibold mb-2">최근 달성</h3>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {completions.slice(0, 8).map(comp => {
+                    const cell = cells.find(c => c.id === comp.cell_id);
+                    return (
+                      <div key={comp.id} className="flex items-center gap-1.5 text-[10px]">
+                        <span className="w-1 h-1 rounded-full bg-[var(--color-success)] shrink-0" />
+                        <span className="text-[var(--color-text-secondary)] truncate">{cell?.content || '—'}</span>
+                        <span className="text-[var(--color-text-muted)] ml-auto shrink-0">{comp.week_number}주차</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Delete confirmation */}
-        {showDeleteConfirm && (
+        {/* Delete modal */}
+        {delModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(false)} />
-            <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm animate-scale-in">
-              <h3 className="font-semibold text-lg mb-2">만다라트 삭제</h3>
-              <p className="text-sm text-[var(--color-text-light)] mb-6">
-                &ldquo;{mandalart.title}&rdquo;을 삭제하시겠습니까?<br />
-                모든 달성 기록도 함께 삭제됩니다.
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setDelModal(false)} />
+            <div className="relative bg-white rounded-xl p-5 w-full max-w-xs anim-pop">
+              <h3 className="font-semibold text-sm mb-1.5">만다라트 삭제</h3>
+              <p className="text-xs text-[var(--color-text-muted)] mb-5">
+                &ldquo;{m.title}&rdquo;과 모든 기록을 삭제합니다.
               </p>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setShowDeleteConfirm(false)} className="btn-outline text-sm">
-                  취소
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 disabled:opacity-50"
-                >
-                  {deleting ? '삭제 중...' : '삭제'}
-                </button>
+                <button onClick={() => setDelModal(false)} className="btn btn-ghost btn-sm">취소</button>
+                <button onClick={del} className="btn btn-sm bg-red-500 text-white hover:bg-red-600">삭제</button>
               </div>
             </div>
           </div>

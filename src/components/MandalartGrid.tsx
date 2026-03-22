@@ -14,81 +14,66 @@ interface Completion {
   id: string;
   cell_id: string;
   week_number: number;
-  completed_at: string;
 }
 
 interface Props {
   cells: Cell[];
   completions: Completion[];
-  mandalartId: string;
   startDate: string;
   isOwner: boolean;
-  onToggleComplete?: (cellId: string, isCompleted: boolean) => void;
+  onToggle?: (cellId: string, isCompleted: boolean) => void;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export default function MandalartGrid({ cells, completions, mandalartId, startDate, isOwner, onToggleComplete }: Props) {
-  const [animatingCell, setAnimatingCell] = useState<string | null>(null);
-  const currentWeek = getCurrentWeekNumber(startDate);
-
+export default function MandalartGrid({ cells, completions, startDate, isOwner, onToggle, size = 'md' }: Props) {
+  const [bouncing, setBouncing] = useState<string | null>(null);
+  const week = getCurrentWeekNumber(startDate);
   const cellMap = new Map(cells.map(c => [c.position, c]));
 
-  const isCellCompleted = useCallback((cellId: string) => {
-    return completions.some(c => c.cell_id === cellId && c.week_number === currentWeek);
-  }, [completions, currentWeek]);
+  const isDone = useCallback((cid: string) =>
+    completions.some(c => c.cell_id === cid && c.week_number === week),
+  [completions, week]);
 
-  const getCellCompletionCount = useCallback((cellId: string) => {
-    return completions.filter(c => c.cell_id === cellId).length;
-  }, [completions]);
-
-  const handleCellClick = (cell: Cell) => {
+  const click = (cell: Cell) => {
     if (!isOwner || cell.cell_type !== 'task' || !cell.content) return;
-
-    const completed = isCellCompleted(cell.id);
-    setAnimatingCell(cell.id);
-    setTimeout(() => setAnimatingCell(null), 300);
-
-    onToggleComplete?.(cell.id, completed);
+    setBouncing(cell.id);
+    setTimeout(() => setBouncing(null), 250);
+    onToggle?.(cell.id, isDone(cell.id));
   };
 
+  const fontSize = size === 'sm' ? 'text-[4px]' : size === 'lg' ? 'text-[0.7rem]' : 'text-[0.6rem]';
+  const maxChars = size === 'sm' ? 2 : size === 'lg' ? 8 : 5;
+
   return (
-    <div className="mandalart-grid w-full max-w-2xl mx-auto">
+    <div className="m-grid w-full">
       {Array.from({ length: 81 }).map((_, pos) => {
         const cell = cellMap.get(pos);
         const isCenter = pos === CENTER_POSITION;
-        const isSubCenter = SUB_CENTER_POSITIONS.includes(pos);
-        const hasContent = cell && cell.content;
-        const completed = cell ? isCellCompleted(cell.id) : false;
-        const completionCount = cell ? getCellCompletionCount(cell.id) : 0;
-
-        // Block separator classes
-        const col = pos % 9;
-        const row = Math.floor(pos / 9);
-        const blockSepRight = col === 2 || col === 5;
-        const blockSepBottom = row === 2 || row === 5;
+        const isSub = SUB_CENTER_POSITIONS.includes(pos);
+        const has = cell?.content;
+        const done = cell ? isDone(cell.id) : false;
+        const col = pos % 9, row = Math.floor(pos / 9);
 
         return (
           <div
             key={pos}
-            onClick={() => cell && handleCellClick(cell)}
-            className={`mandalart-cell ${
-              isCenter ? 'center' :
-              isSubCenter ? 'sub-center' :
-              completed ? 'completed task' :
-              'task'
-            } ${blockSepRight ? 'block-separator-right' : ''} ${
-              blockSepBottom ? 'block-separator-bottom' : ''
-            } ${animatingCell === cell?.id ? 'animate-check' : ''} ${
-              isOwner && cell?.cell_type === 'task' && hasContent ? 'cursor-pointer' : 'cursor-default'
-            }`}
-            title={hasContent ? `${cell.content}${completionCount > 0 ? ` (${completionCount}회 달성)` : ''}` : ''}
+            onClick={() => cell && click(cell)}
+            className={[
+              'm-cell',
+              fontSize,
+              isCenter ? 'center' : isSub ? 'sub' : done ? 'task done' : has ? 'task' : 'empty',
+              isOwner && has && cell?.cell_type === 'task' ? 'interactive' : '',
+              col === 2 || col === 5 ? 'blk-r' : '',
+              row === 2 || row === 5 ? 'blk-b' : '',
+              bouncing === cell?.id ? 'anim-check' : '',
+            ].filter(Boolean).join(' ')}
+            title={has ? cell.content : ''}
           >
-            {hasContent ? (
-              <span className="truncate w-full px-0.5">
-                {cell.content.length > 6 ? cell.content.slice(0, 6) + '..' : cell.content}
+            {has ? (
+              <span className="truncate w-full px-px">
+                {cell.content.length > maxChars ? cell.content.slice(0, maxChars) + '..' : cell.content}
               </span>
-            ) : (
-              <span className="text-[var(--color-text-muted)] opacity-30">·</span>
-            )}
+            ) : null}
           </div>
         );
       })}
