@@ -26,9 +26,7 @@ export default function Header({ nickname, onNicknameChange }: Props) {
           {/* Logo + nav */}
           <div className="flex items-center gap-4 sm:gap-6">
             <button onClick={() => router.push('/')} className="flex items-center gap-2 shrink-0">
-              <div className="w-7 h-7 bg-[var(--color-primary)] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xs">M</span>
-              </div>
+              <img src="/logo-64.png" alt="만다라트" className="w-7 h-7 rounded" />
               <span className="font-semibold text-sm sm:text-base tracking-tight">만다라트</span>
             </button>
 

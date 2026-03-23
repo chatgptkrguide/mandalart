@@ -117,8 +117,8 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
                 {ended ? '종료' : active ? '진행 중' : '예정'}
               </span>
             </div>
-            <p className="text-sm text-[var(--color-text-muted)] truncate">{m.center_goal}</p>
-            <p className="text-xs sm:text-sm text-[var(--color-text-muted)] mt-0.5">
+            <p className="text-sm sm:text-base text-[var(--color-text-muted)] truncate">{m.center_goal}</p>
+            <p className="text-sm text-[var(--color-text-muted)] mt-1">
               {formatDate(m.start_date)} ~ {formatDate(m.end_date)}
               {active && !ended && <span className="text-[var(--color-primary)] ml-2 font-medium">D-{days}</span>}
               {m.nickname && !m.isOwner && <span className="ml-2">by {m.nickname}</span>}
@@ -146,7 +146,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
               </div>
               {active && (
                 <div>
-                  <div className="flex justify-between text-xs mb-1.5">
+                  <div className="flex justify-between text-sm mb-1.5">
                     <span className="text-[var(--color-text-muted)]">{week}주차</span>
                     <span className="font-semibold">{weekPct}%</span>
                   </div>
@@ -190,7 +190,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
             {/* Mobile: Weekly checklist below grid */}
             {active && m.isOwner && taskCells.length > 0 && (
               <div className="lg:hidden card p-4 mt-4">
-                <h3 className="text-sm font-semibold mb-3">이번 주 할 일</h3>
+                <h3 className="text-base font-semibold mb-3">이번 주 할 일</h3>
                 <div className="space-y-1.5">
                   {taskCells.map(cell => {
                     const done = weekDone.some(c => c.cell_id === cell.id);
@@ -222,10 +222,10 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
           <div className="hidden lg:block lg:col-span-4 space-y-4">
             {/* Stats */}
             <div className="card p-5">
-              <h3 className="text-sm font-semibold mb-4">진행 현황</h3>
+              <h3 className="text-base font-semibold mb-4">진행 현황</h3>
               <div className="space-y-4">
                 <div>
-                  <div className="flex justify-between text-xs mb-1.5">
+                  <div className="flex justify-between text-sm mb-1.5">
                     <span className="text-[var(--color-text-muted)]">전체 진행률</span>
                     <span className="font-semibold">{overallPct}%</span>
                   </div>
@@ -246,11 +246,11 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
               <div className="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-[var(--color-border-light)]">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-[var(--color-accent)]">{completions.length}</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">총 달성</p>
+                  <p className="text-sm text-[var(--color-text-muted)]">총 달성</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-[var(--color-primary)]">{week}/{totalW}</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">주차</p>
+                  <p className="text-sm text-[var(--color-text-muted)]">주차</p>
                 </div>
               </div>
             </div>
@@ -258,7 +258,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
             {/* Weekly checklist - desktop */}
             {active && m.isOwner && taskCells.length > 0 && (
               <div className="card p-5">
-                <h3 className="text-sm font-semibold mb-3">이번 주 할 일</h3>
+                <h3 className="text-base font-semibold mb-3">이번 주 할 일</h3>
                 <div className="space-y-1.5 max-h-64 overflow-y-auto">
                   {taskCells.map(cell => {
                     const done = weekDone.some(c => c.cell_id === cell.id);
@@ -288,7 +288,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
             {/* Recent activity */}
             {completions.length > 0 && (
               <div className="card p-5">
-                <h3 className="text-sm font-semibold mb-3">최근 달성</h3>
+                <h3 className="text-base font-semibold mb-3">최근 달성</h3>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {completions.slice(0, 8).map(comp => {
                     const cell = cells.find(c => c.id === comp.cell_id);

@@ -65,8 +65,8 @@ export default function MandalartGrid({ cells, completions, startDate, isOwner, 
             title={has ? cell.content : ''}
           >
             {has ? (
-              <span className="truncate w-full px-px">
-                {cell.content.length > 5 ? cell.content.slice(0, 5) + '..' : cell.content}
+              <span className="w-full px-0.5 overflow-hidden text-ellipsis line-clamp-2 leading-tight">
+                {cell.content}
               </span>
             ) : null}
           </div>
