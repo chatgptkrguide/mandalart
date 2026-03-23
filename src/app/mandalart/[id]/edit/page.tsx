@@ -52,7 +52,10 @@ export default function EditMandalartPage({ params }: { params: Promise<{ id: st
     fetch(`/api/mandalarts/${id}`)
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => {
-        if (!data.mandalart.isOwner) { router.push(`/mandalart/${id}`); return; }
+        if (!data.mandalart.isOwner) {
+          router.push(`/mandalart/${id}`);
+          return;
+        }
         const m = data.mandalart;
         setTitle(m.title);
         setStartDate(m.start_date);

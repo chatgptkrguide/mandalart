@@ -51,6 +51,15 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
   const toggle = async (cellId: string, isDone: boolean) => {
     if (!user || toggling.has(cellId)) return;
     setToggling(prev => new Set(prev).add(cellId));
+
+    // Optimistic update
+    const curWeek = m ? getCurrentWeekNumber(m.start_date) : 0;
+    if (isDone) {
+      setCompletions(prev => prev.filter(c => !(c.cell_id === cellId && c.week_number === curWeek)));
+    } else {
+      setCompletions(prev => [...prev, { id: 'temp', cell_id: cellId, week_number: curWeek, completed_at: new Date().toISOString() }]);
+    }
+
     try {
       const res = await fetch(`/api/mandalarts/${id}/complete`, {
         method: 'POST',
@@ -58,22 +67,32 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
         body: JSON.stringify({ cellId, action: isDone ? 'uncomplete' : 'complete' }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        console.error('toggle failed:', err.error);
+        // Revert on failure
+        await load();
+      } else {
+        // Sync with server
+        await load();
       }
-      await load();
-    } catch { /* network error */ }
+    } catch {
+      await load(); // Revert on network error
+    }
     finally { setToggling(prev => { const s = new Set(prev); s.delete(cellId); return s; }); }
   };
 
   const del = async () => {
     if (!user) return;
-    await fetch(`/api/mandalarts/${id}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    router.push('/');
+    try {
+      const res = await fetch(`/api/mandalarts/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error();
+      router.push('/');
+    } catch {
+      // Show error if delete fails
+      alert('삭제에 실패했습니다. 다시 시도해주세요.');
+    }
   };
 
   if (!ready || loading || !m) {

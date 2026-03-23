@@ -146,11 +146,18 @@ export async function PUT(
           );
         }
       } else {
-        // Empty content = delete cell
-        await executeD1(
-          'DELETE FROM mandalart_cells WHERE mandalart_id = ?1 AND position = ?2',
+        // Empty content: check for dependent records before deleting
+        const existing = await queryD1<{ id: string }>(
+          'SELECT id FROM mandalart_cells WHERE mandalart_id = ?1 AND position = ?2',
           [id, pos]
         );
+        if (existing.length > 0) {
+          const cellId = existing[0].id;
+          // Delete dependent completions and logs first
+          await executeD1('DELETE FROM task_completions WHERE cell_id = ?1', [cellId]);
+          await executeD1('DELETE FROM activity_logs WHERE cell_id = ?1', [cellId]);
+          await executeD1('DELETE FROM mandalart_cells WHERE id = ?1', [cellId]);
+        }
       }
     }
   }

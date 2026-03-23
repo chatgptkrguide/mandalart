@@ -82,8 +82,13 @@ JSON 배열로만 응답: ["영역1", "영역2", ..., "영역8"]
         }
       ]);
 
-      const parsed = JSON.parse(content.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
-      return NextResponse.json({ suggestions: parsed });
+      const cleaned = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      let parsed: unknown;
+      try { parsed = JSON.parse(cleaned); } catch { throw new Error('AI 응답 형식 오류'); }
+      if (!Array.isArray(parsed) || !parsed.every(i => typeof i === 'string')) {
+        throw new Error('AI 응답이 배열 형식이 아닙니다');
+      }
+      return NextResponse.json({ suggestions: parsed.slice(0, 8) });
 
     } else if (type === 'tasks') {
       // 중위 목표 → 8개 실천 항목 추천
@@ -131,8 +136,13 @@ JSON 배열로만 응답: ["항목1", "항목2", ..., "항목8"]
         }
       ]);
 
-      const parsed = JSON.parse(content.replace(/```json?\n?/g, '').replace(/```/g, '').trim());
-      return NextResponse.json({ suggestions: parsed });
+      const cleaned2 = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+      let parsed2: unknown;
+      try { parsed2 = JSON.parse(cleaned2); } catch { throw new Error('AI 응답 형식 오류'); }
+      if (!Array.isArray(parsed2) || !parsed2.every(i => typeof i === 'string')) {
+        throw new Error('AI 응답이 배열 형식이 아닙니다');
+      }
+      return NextResponse.json({ suggestions: parsed2.slice(0, 8) });
 
     } else {
       return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
