@@ -258,12 +258,15 @@ export default function NewMandalartPage() {
           <div className="anim-fade space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-base font-bold mb-0.5">하위 목표 8가지</h2>
+                <h2 className="text-base font-bold mb-0.5">핵심 영역 8가지</h2>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  &ldquo;<span className="font-medium text-[var(--color-text)]">{centerGoal}</span>&rdquo; 달성을 위한 8개 영역
+                  &ldquo;<span className="font-medium text-[var(--color-text)]">{centerGoal}</span>&rdquo;를 이루기 위해 키워야 할 영역
                   <span className="ml-1 text-[var(--color-primary)]">
                     ({Object.values(subGoals).filter(Boolean).length}/8)
                   </span>
+                </p>
+                <p className="text-[9px] text-[var(--color-text-muted)] mt-0.5">
+                  행동이 아닌 영역을 적으세요 (예: 체력관리, 재무관리, 인맥구축)
                 </p>
               </div>
               <button
@@ -303,7 +306,7 @@ export default function NewMandalartPage() {
                       value={subGoals[pos] || ''}
                       onChange={e => setSubGoals(p => ({ ...p, [pos]: e.target.value }))}
                       className="w-full bg-transparent text-xs font-medium outline-none placeholder:text-[var(--color-text-muted)]"
-                      placeholder="목표"
+                      placeholder="영역명"
                       disabled={aiLoadingSub}
                     />
                   </div>
@@ -319,7 +322,7 @@ export default function NewMandalartPage() {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-base font-bold mb-0.5">실천 항목</h2>
-                <p className="text-xs text-[var(--color-text-muted)]">각 하위 목표별 구체적 실천 (수치 + 행동)</p>
+                <p className="text-xs text-[var(--color-text-muted)]">각 영역별 매주 체크할 실천 항목 (주기 + 수치 + 행동)</p>
               </div>
               {filledSubs.length > 0 && (
                 <button
@@ -396,14 +399,14 @@ export default function NewMandalartPage() {
                             value={tasks[tp] || ''}
                             onChange={e => setTasks(p => ({ ...p, [tp]: e.target.value }))}
                             className="input text-xs"
-                            placeholder={`실천 항목 ${i + 1} (수치 + 행동)`}
+                            placeholder={`예: 주 3회 30분 러닝`}
                             disabled={isLoading}
                           />
                         </div>
                       ))}
 
                       <p className="text-[9px] text-[var(--color-text-muted)] mt-1 pl-5">
-                        예시: &ldquo;매주 책 1권 완독&rdquo; &ldquo;주 4회 30분 러닝&rdquo; &ldquo;매일 영단어 50개 암기&rdquo;
+                        매주 체크할 수 있는 항목으로 — &ldquo;주 3회 30분 러닝&rdquo; &ldquo;매일 가계부 기록&rdquo; &ldquo;매주 책 1권 완독&rdquo;
                       </p>
                     </div>
                   );
