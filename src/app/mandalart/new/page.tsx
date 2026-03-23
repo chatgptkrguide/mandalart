@@ -37,9 +37,9 @@ export default function NewMandalartPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const [title, setTitle] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [title, setTitle] = useState('2026년 상반기 자기계발');
+  const [startDate, setStartDate] = useState('2026-03-23');
+  const [endDate, setEndDate] = useState('2026-06-30');
   const [isPublic, setIsPublic] = useState(true);
   const [centerGoal, setCenterGoal] = useState('');
   const [subGoals, setSubGoals] = useState<Record<number, string>>({});
