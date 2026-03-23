@@ -22,10 +22,9 @@ interface Props {
   startDate: string;
   isOwner: boolean;
   onToggle?: (cellId: string, isCompleted: boolean) => void;
-  size?: 'sm' | 'md' | 'lg';
 }
 
-export default function MandalartGrid({ cells, completions, startDate, isOwner, onToggle, size = 'md' }: Props) {
+export default function MandalartGrid({ cells, completions, startDate, isOwner, onToggle }: Props) {
   const [bouncing, setBouncing] = useState<string | null>(null);
   const week = getCurrentWeekNumber(startDate);
   const cellMap = new Map(cells.map(c => [c.position, c]));
@@ -40,9 +39,6 @@ export default function MandalartGrid({ cells, completions, startDate, isOwner, 
     setTimeout(() => setBouncing(null), 250);
     onToggle?.(cell.id, isDone(cell.id));
   };
-
-  const fontSize = size === 'sm' ? 'text-[4px]' : size === 'lg' ? 'text-[0.7rem]' : 'text-[0.6rem]';
-  const maxChars = size === 'sm' ? 2 : size === 'lg' ? 8 : 5;
 
   return (
     <div className="m-grid w-full">
@@ -60,7 +56,6 @@ export default function MandalartGrid({ cells, completions, startDate, isOwner, 
             onClick={() => cell && click(cell)}
             className={[
               'm-cell',
-              fontSize,
               isCenter ? 'center' : isSub ? 'sub' : done ? 'task done' : has ? 'task' : 'empty',
               isOwner && has && cell?.cell_type === 'task' ? 'interactive' : '',
               col === 2 || col === 5 ? 'blk-r' : '',
@@ -71,7 +66,7 @@ export default function MandalartGrid({ cells, completions, startDate, isOwner, 
           >
             {has ? (
               <span className="truncate w-full px-px">
-                {cell.content.length > maxChars ? cell.content.slice(0, maxChars) + '..' : cell.content}
+                {cell.content.length > 5 ? cell.content.slice(0, 5) + '..' : cell.content}
               </span>
             ) : null}
           </div>

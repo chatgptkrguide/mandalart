@@ -29,13 +29,13 @@ export default function MandalartCard({ mandalart, showAuthor }: Props) {
   return (
     <button
       onClick={() => router.push(`/mandalart/${mandalart.id}`)}
-      className="card card-hover p-4 text-left w-full group"
+      className="card card-hover p-4 sm:p-5 text-left w-full group"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-semibold text-sm truncate group-hover:text-[var(--color-primary)] transition-colors leading-snug">
+        <h3 className="font-semibold text-sm sm:text-base truncate group-hover:text-[var(--color-primary)] transition-colors leading-snug">
           {mandalart.title}
         </h3>
-        <span className={`text-[10px] px-1.5 py-px rounded-full whitespace-nowrap shrink-0 font-medium ${
+        <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 font-medium ${
           ended ? 'bg-gray-100 text-gray-400'
             : active ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
             : 'bg-blue-50 text-blue-400'
@@ -44,18 +44,18 @@ export default function MandalartCard({ mandalart, showAuthor }: Props) {
         </span>
       </div>
 
-      <p className="text-xs text-[var(--color-text-muted)] truncate mb-3">{mandalart.center_goal}</p>
+      <p className="text-xs sm:text-sm text-[var(--color-text-muted)] truncate mb-3">{mandalart.center_goal}</p>
 
-      <div className="flex items-center justify-between text-[10px] text-[var(--color-text-muted)] mb-2">
+      <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mb-2.5">
         <span>{formatDate(mandalart.start_date)} ~ {formatDate(mandalart.end_date)}</span>
         {active && !ended && <span className="text-[var(--color-primary)] font-medium">D-{days}</span>}
       </div>
 
-      <div className="bar mb-1.5">
+      <div className="bar mb-2">
         <div className="bar-fill" style={{ width: `${pct}%` }} />
       </div>
 
-      <div className="flex justify-between text-[10px] text-[var(--color-text-muted)]">
+      <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
         {showAuthor && mandalart.nickname ? (
           <span>{mandalart.nickname}</span>
         ) : (
