@@ -62,23 +62,28 @@ export default function NewMandalartPage() {
 
   // ── AI: 하위 목표 8개 추천 ──
   const suggestSubGoals = async () => {
-    if (!centerGoal) return;
+    if (!centerGoal || aiLoadingSub) return;
     setAiLoadingSub(true);
+    setError('');
     try {
       const res = await fetch('/api/ai/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'sub_goals', centerGoal, period }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const text = await res.text();
+      let data: { suggestions?: string[]; error?: string };
+      try { data = JSON.parse(text); } catch { throw new Error('AI 응답을 파싱할 수 없습니다'); }
+      if (!res.ok) throw new Error(data.error || '요청 실패');
+      if (!Array.isArray(data.suggestions) || data.suggestions.length === 0) {
+        throw new Error('추천 결과가 비어 있습니다');
+      }
 
-      const suggestions: string[] = data.suggestions;
       const newSubs: Record<number, string> = {};
       SUB_CENTER_POSITIONS.forEach((pos, i) => {
-        if (suggestions[i]) newSubs[pos] = suggestions[i];
+        if (data.suggestions![i]) newSubs[pos] = data.suggestions![i];
       });
-      setSubGoals(newSubs);
+      setSubGoals(prev => ({ ...prev, ...newSubs }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'AI 추천 실패');
     } finally {
@@ -95,22 +100,29 @@ export default function NewMandalartPage() {
     if (!blockCenter) return;
 
     setAiLoadingTask(subPos);
+    setError('');
     try {
       const res = await fetch('/api/ai/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'tasks', centerGoal, subGoal, period }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const text = await res.text();
+      let data: { suggestions?: string[]; error?: string };
+      try { data = JSON.parse(text); } catch { throw new Error('AI 응답을 파싱할 수 없습니다'); }
+      if (!res.ok) throw new Error(data.error || '요청 실패');
+      if (!Array.isArray(data.suggestions) || data.suggestions.length === 0) {
+        throw new Error('추천 결과가 비어 있습니다');
+      }
 
-      const suggestions: string[] = data.suggestions;
       const surr = getSurrounding(blockCenter);
-      const newTasks = { ...tasks };
-      surr.forEach((pos, i) => {
-        if (suggestions[i]) newTasks[pos] = suggestions[i];
+      setTasks(prev => {
+        const updated = { ...prev };
+        surr.forEach((pos, i) => {
+          if (data.suggestions![i]) updated[pos] = data.suggestions![i];
+        });
+        return updated;
       });
-      setTasks(newTasks);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'AI 추천 실패');
     } finally {
