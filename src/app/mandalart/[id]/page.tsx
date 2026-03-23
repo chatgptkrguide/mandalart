@@ -126,6 +126,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
           </div>
           {m.isOwner && (
             <div className="flex gap-2 shrink-0">
+              <button onClick={() => router.push(`/mandalart/${id}/edit`)} className="btn btn-fill btn-sm">수정</button>
               <button onClick={() => router.push(`/mandalart/${id}/log`)} className="btn btn-ghost btn-sm">달성 로그</button>
               <button onClick={() => setDelModal(true)} className="btn btn-sm text-red-400 hover:text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200">삭제</button>
             </div>
