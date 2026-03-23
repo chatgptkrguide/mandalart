@@ -27,14 +27,19 @@ export function useUser() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    let stored = localStorage.getItem(STORAGE_KEY);
     let parsed: LocalUser;
 
-    if (stored) {
-      parsed = JSON.parse(stored);
-    } else {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        parsed = JSON.parse(stored);
+        if (!parsed.id || !parsed.nickname) throw new Error('invalid');
+      } else {
+        throw new Error('no data');
+      }
+    } catch {
       parsed = { id: generateId(), nickname: randomNickname() };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch {}
     }
 
     setUser(parsed);

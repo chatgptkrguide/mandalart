@@ -261,6 +261,9 @@ export default function NewMandalartPage() {
                 <h2 className="text-base font-bold mb-0.5">하위 목표 8가지</h2>
                 <p className="text-xs text-[var(--color-text-muted)]">
                   &ldquo;<span className="font-medium text-[var(--color-text)]">{centerGoal}</span>&rdquo; 달성을 위한 8개 영역
+                  <span className="ml-1 text-[var(--color-primary)]">
+                    ({Object.values(subGoals).filter(Boolean).length}/8)
+                  </span>
                 </p>
               </div>
               <button

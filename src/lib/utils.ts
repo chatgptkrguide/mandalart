@@ -8,7 +8,9 @@ export function generateId(): string {
 export function getCurrentWeekNumber(startDate: string): number {
   const start = startOfWeek(parseISO(startDate), { weekStartsOn: 1 });
   const now = startOfWeek(new Date(), { weekStartsOn: 1 });
-  return Math.max(0, differenceInWeeks(now, start)) + 1;
+  const diff = differenceInWeeks(now, start);
+  if (diff < 0) return 0; // 시작 전
+  return diff + 1;
 }
 
 export function getTotalWeeks(startDate: string, endDate: string): number {

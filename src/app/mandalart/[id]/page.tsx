@@ -31,6 +31,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [loading, setLoading] = useState(true);
   const [delModal, setDelModal] = useState(false);
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -48,13 +49,21 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => { if (ready && user) load(); }, [ready, user, load]);
 
   const toggle = async (cellId: string, isDone: boolean) => {
-    if (!user) return;
-    await fetch(`/api/mandalarts/${id}/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, cellId, action: isDone ? 'uncomplete' : 'complete' }),
-    });
-    load();
+    if (!user || toggling.has(cellId)) return;
+    setToggling(prev => new Set(prev).add(cellId));
+    try {
+      const res = await fetch(`/api/mandalarts/${id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, cellId, action: isDone ? 'uncomplete' : 'complete' }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        console.error('toggle failed:', err.error);
+      }
+      await load();
+    } catch { /* network error */ }
+    finally { setToggling(prev => { const s = new Set(prev); s.delete(cellId); return s; }); }
   };
 
   const del = async () => {
