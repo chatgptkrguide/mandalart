@@ -132,66 +132,59 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {/* Mobile: Stats first, then grid */}
-        <div className="lg:hidden space-y-4 mb-6">
-          {/* Compact stats for mobile */}
-          <div className="card p-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-[var(--color-text-muted)]">전체 진행률</span>
-                  <span className="font-semibold">{overallPct}%</span>
-                </div>
-                <div className="bar"><div className="bar-fill" style={{ width: `${overallPct}%` }} /></div>
-              </div>
-              {active && (
-                <div>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-[var(--color-text-muted)]">{week}주차</span>
-                    <span className="font-semibold">{weekPct}%</span>
-                  </div>
-                  <div className="bar">
-                    <div className="bar-fill" style={{ width: `${weekPct}%`, background: weekPct === 100 ? 'var(--color-success)' : undefined }} />
-                  </div>
-                </div>
-              )}
+        {/* Stats bar - compact horizontal */}
+        <div className="card p-4 sm:p-5 mb-6">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div className="flex items-center gap-3 min-w-[140px]">
+              <span className="text-sm text-[var(--color-text-muted)]">전체</span>
+              <div className="bar flex-1 min-w-[80px]"><div className="bar-fill" style={{ width: `${overallPct}%` }} /></div>
+              <span className="text-sm font-semibold w-10 text-right">{overallPct}%</span>
             </div>
-            <div className="flex gap-4 mt-3 pt-3 border-t border-[var(--color-border-light)]">
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-[var(--color-accent)]">{completions.length}</span>
-                <span className="text-xs text-[var(--color-text-muted)]">총 달성</span>
+            {active && (
+              <div className="flex items-center gap-3 min-w-[140px]">
+                <span className="text-sm text-[var(--color-text-muted)]">{week}주차</span>
+                <div className="bar flex-1 min-w-[80px]">
+                  <div className="bar-fill" style={{ width: `${weekPct}%`, background: weekPct === 100 ? 'var(--color-success)' : undefined }} />
+                </div>
+                <span className="text-sm font-semibold w-10 text-right">{weekPct}%</span>
               </div>
-              <div className="flex items-center gap-2">
+            )}
+            <div className="flex items-center gap-4 ml-auto">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl font-bold text-[var(--color-accent)]">{completions.length}</span>
+                <span className="text-sm text-[var(--color-text-muted)]">달성</span>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <span className="text-xl font-bold text-[var(--color-primary)]">{week}/{totalW}</span>
-                <span className="text-xs text-[var(--color-text-muted)]">주차</span>
+                <span className="text-sm text-[var(--color-text-muted)]">주차</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-6">
-          {/* Grid */}
-          <div className="lg:col-span-8">
-            <div className="card p-4 sm:p-6">
-              {m.isOwner && active && (
-                <p className="text-xs sm:text-sm text-[var(--color-text-muted)] mb-4 text-center">
-                  실천 항목을 클릭하여 이번 주 달성을 표시하세요
-                </p>
-              )}
-              <MandalartGrid
-                cells={cells}
-                completions={completions}
-                startDate={m.start_date}
-                isOwner={m.isOwner && active}
-                onToggle={toggle}
-              />
-            </div>
+        {/* Mandalart grid - full width */}
+        <div className="card p-4 sm:p-8">
+          {m.isOwner && active && (
+            <p className="text-sm text-[var(--color-text-muted)] mb-5 text-center">
+              실천 항목을 클릭하여 이번 주 달성을 표시하세요
+            </p>
+          )}
+          <MandalartGrid
+            cells={cells}
+            completions={completions}
+            startDate={m.start_date}
+            isOwner={m.isOwner && active}
+            onToggle={toggle}
+          />
+        </div>
 
-            {/* Mobile: Weekly checklist below grid */}
+        {/* Weekly checklist + Recent - below grid */}
+        {(active && m.isOwner && taskCells.length > 0) || completions.length > 0 ? (
+          <div className="grid sm:grid-cols-2 gap-4 mt-6">
             {active && m.isOwner && taskCells.length > 0 && (
-              <div className="lg:hidden card p-4 mt-4">
+              <div className="card p-5">
                 <h3 className="text-base font-semibold mb-3">이번 주 할 일</h3>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 max-h-72 overflow-y-auto">
                   {taskCells.map(cell => {
                     const done = weekDone.some(c => c.cell_id === cell.id);
                     return (
@@ -216,87 +209,18 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Desktop sidebar */}
-          <div className="hidden lg:block lg:col-span-4 space-y-4">
-            {/* Stats */}
-            <div className="card p-5">
-              <h3 className="text-base font-semibold mb-4">진행 현황</h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-[var(--color-text-muted)]">전체 진행률</span>
-                    <span className="font-semibold">{overallPct}%</span>
-                  </div>
-                  <div className="bar"><div className="bar-fill" style={{ width: `${overallPct}%` }} /></div>
-                </div>
-                {active && (
-                  <div>
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-[var(--color-text-muted)]">{week}주차</span>
-                      <span className="font-semibold">{weekPct}%</span>
-                    </div>
-                    <div className="bar">
-                      <div className="bar-fill" style={{ width: `${weekPct}%`, background: weekPct === 100 ? 'var(--color-success)' : undefined }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-[var(--color-border-light)]">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-[var(--color-accent)]">{completions.length}</p>
-                  <p className="text-sm text-[var(--color-text-muted)]">총 달성</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-[var(--color-primary)]">{week}/{totalW}</p>
-                  <p className="text-sm text-[var(--color-text-muted)]">주차</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Weekly checklist - desktop */}
-            {active && m.isOwner && taskCells.length > 0 && (
-              <div className="card p-5">
-                <h3 className="text-base font-semibold mb-3">이번 주 할 일</h3>
-                <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                  {taskCells.map(cell => {
-                    const done = weekDone.some(c => c.cell_id === cell.id);
-                    return (
-                      <button
-                        key={cell.id}
-                        onClick={() => toggle(cell.id, done)}
-                        className={`w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
-                          done
-                            ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]'
-                            : 'bg-[var(--color-bg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-warm)]'
-                        }`}
-                      >
-                        <span className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 text-xs font-bold transition-all ${
-                          done ? 'bg-[var(--color-success)] border-[var(--color-success)] text-white' : 'border-[var(--color-border)]'
-                        }`}>
-                          {done && '✓'}
-                        </span>
-                        <span className={done ? 'line-through opacity-70' : ''}>{cell.content}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Recent activity */}
             {completions.length > 0 && (
               <div className="card p-5">
                 <h3 className="text-base font-semibold mb-3">최근 달성</h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {completions.slice(0, 8).map(comp => {
+                <div className="space-y-2.5 max-h-72 overflow-y-auto">
+                  {completions.slice(0, 12).map(comp => {
                     const cell = cells.find(c => c.id === comp.cell_id);
                     return (
-                      <div key={comp.id} className="flex items-center gap-2 text-xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] shrink-0" />
+                      <div key={comp.id} className="flex items-center gap-2.5 text-sm">
+                        <span className="w-2 h-2 rounded-full bg-[var(--color-success)] shrink-0" />
                         <span className="text-[var(--color-text-secondary)] truncate">{cell?.content || '—'}</span>
-                        <span className="text-[var(--color-text-muted)] ml-auto shrink-0">{comp.week_number}주차</span>
+                        <span className="text-[var(--color-text-muted)] ml-auto shrink-0 text-xs">{comp.week_number}주차</span>
                       </div>
                     );
                   })}
@@ -304,7 +228,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
               </div>
             )}
           </div>
-        </div>
+        ) : null}
 
         {/* Delete modal */}
         {delModal && (
