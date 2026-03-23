@@ -180,7 +180,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
         </div>
 
         {/* Mandalart grid - full width */}
-        <div className="card p-4 sm:p-8">
+        <div className="card p-2 sm:p-6 md:p-8">
           {m.isOwner && active && (
             <p className="text-sm text-[var(--color-text-muted)] mb-5 text-center">
               실천 항목을 클릭하여 이번 주 달성을 표시하세요
