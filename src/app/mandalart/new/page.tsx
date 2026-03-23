@@ -158,7 +158,7 @@ export default function NewMandalartPage() {
       const res = await fetch('/api/mandalarts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, title, centerGoal, startDate, endDate, isPublic, cells }),
+        body: JSON.stringify({ title, centerGoal, startDate, endDate, isPublic, cells }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);

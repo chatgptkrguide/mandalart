@@ -36,7 +36,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
   const load = useCallback(async () => {
     if (!user) return;
     try {
-      const res = await fetch(`/api/mandalarts/${id}?userId=${user.id}`);
+      const res = await fetch(`/api/mandalarts/${id}`);
       if (!res.ok) { router.push('/'); return; }
       const data = await res.json();
       setM(data.mandalart);
@@ -55,7 +55,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
       const res = await fetch(`/api/mandalarts/${id}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, cellId, action: isDone ? 'uncomplete' : 'complete' }),
+        body: JSON.stringify({ cellId, action: isDone ? 'uncomplete' : 'complete' }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -71,7 +71,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
     await fetch(`/api/mandalarts/${id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id }),
+      body: JSON.stringify({}),
     });
     router.push('/');
   };

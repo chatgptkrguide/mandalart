@@ -26,7 +26,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!ready || !user) return;
-    fetch(`/api/mandalarts?userId=${user.id}`)
+    fetch('/api/mandalarts')
       .then(r => r.json())
       .then(d => setMine(d.mandalarts || []))
       .catch(() => {})

@@ -2,15 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const STORAGE_KEY = 'mandalart_user';
-
-interface LocalUser {
-  id: string;
+interface UserInfo {
+  userId: string;
   nickname: string;
-}
-
-function generateId(): string {
-  return 'u_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 const adjectives = ['빠른', '느긋한', '용감한', '조용한', '밝은', '따뜻한', '시원한', '대담한', '꾸준한', '활발한'];
@@ -23,46 +17,38 @@ function randomNickname(): string {
 }
 
 export function useUser() {
-  const [user, setUser] = useState<LocalUser | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    let parsed: LocalUser;
+    // POST /api/user will either:
+    // - return existing session user (from cookie)
+    // - create new user + set session cookie
+    const nickname = randomNickname();
 
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        parsed = JSON.parse(stored);
-        if (!parsed.id || !parsed.nickname) throw new Error('invalid');
-      } else {
-        throw new Error('no data');
-      }
-    } catch {
-      parsed = { id: generateId(), nickname: randomNickname() };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch {}
-    }
-
-    setUser(parsed);
-
-    // Ensure user exists in DB
     fetch('/api/user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: parsed.id, nickname: parsed.nickname }),
-    }).catch(() => {});
-
-    setReady(true);
+      body: JSON.stringify({ nickname }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.user) {
+          setUser(data.user);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setReady(true));
   }, []);
 
   const updateNickname = useCallback((nickname: string) => {
     if (!user) return;
-    const updated = { ...user, nickname };
-    setUser(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setUser(prev => prev ? { ...prev, nickname } : prev);
+
     fetch('/api/user', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, nickname }),
+      body: JSON.stringify({ nickname }),
     }).catch(() => {});
   }, [user]);
 

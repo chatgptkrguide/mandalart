@@ -23,7 +23,7 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/mandalarts')
+    fetch('/api/mandalarts?mode=explore')
       .then(r => r.json())
       .then(d => setList(d.mandalarts || []))
       .catch(() => {})

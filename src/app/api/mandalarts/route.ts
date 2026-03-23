@@ -1,29 +1,21 @@
 import { NextResponse } from 'next/server';
+import { getSessionUser } from '@/lib/session';
 import { queryD1, executeD1 } from '@/lib/d1';
 import { generateId, CENTER_POSITION, SUB_CENTER_POSITIONS, SUB_TO_BLOCK } from '@/lib/utils';
 
 interface MandalartRow {
-  id: string;
-  user_id: string;
-  title: string;
-  center_goal: string;
-  start_date: string;
-  end_date: string;
-  is_public: number;
-  created_at: string;
-  updated_at: string;
-  nickname?: string;
-  completion_count?: number;
-  total_tasks?: number;
+  id: string; user_id: string; title: string; center_goal: string;
+  start_date: string; end_date: string; is_public: number;
+  created_at: string; updated_at: string; nickname?: string;
+  completion_count?: number; total_tasks?: number;
 }
 
-// GET /api/mandalarts?userId=xxx
+// GET /api/mandalarts - list own mandalarts, or public ones if no session
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId');
+  const mode = searchParams.get('mode'); // 'explore' for public list
 
-  if (!userId) {
-    // Return all public mandalarts
+  if (mode === 'explore') {
     const mandalarts = await queryD1<MandalartRow>(
       `SELECT m.*, u.nickname,
         (SELECT COUNT(*) FROM task_completions tc WHERE tc.mandalart_id = m.id) as completion_count,
@@ -34,23 +26,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ mandalarts });
   }
 
+  // List own mandalarts
+  const session = await getSessionUser();
+  if (!session) {
+    return NextResponse.json({ mandalarts: [] });
+  }
+
   const mandalarts = await queryD1<MandalartRow>(
     `SELECT m.*, u.nickname,
       (SELECT COUNT(*) FROM task_completions tc WHERE tc.mandalart_id = m.id) as completion_count,
       (SELECT COUNT(*) FROM mandalart_cells mc WHERE mc.mandalart_id = m.id AND mc.cell_type = 'task' AND mc.content != '') as total_tasks
     FROM mandalarts m JOIN users u ON m.user_id = u.id
     WHERE m.user_id = ?1 ORDER BY m.created_at DESC`,
-    [userId]
+    [session.userId]
   );
 
   return NextResponse.json({ mandalarts });
 }
 
-// POST /api/mandalarts
+// POST /api/mandalarts - create (session-protected)
 export async function POST(request: Request) {
-  const { userId, title, centerGoal, startDate, endDate, isPublic, cells } = await request.json();
+  const session = await getSessionUser();
+  if (!session) {
+    return NextResponse.json({ error: '세션이 필요합니다' }, { status: 401 });
+  }
 
-  if (!userId || !title || !centerGoal || !startDate || !endDate) {
+  const { title, centerGoal, startDate, endDate, isPublic, cells } = await request.json();
+
+  if (!title || !centerGoal || !startDate || !endDate) {
     return NextResponse.json({ error: '필수 정보를 입력하세요' }, { status: 400 });
   }
 
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
 
   await executeD1(
     'INSERT INTO mandalarts (id, user_id, title, center_goal, start_date, end_date, is_public) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)',
-    [mandalartId, userId, title, centerGoal, startDate, endDate, isPublic ? 1 : 0]
+    [mandalartId, session.userId, title, centerGoal, startDate, endDate, isPublic ? 1 : 0]
   );
 
   if (cells && typeof cells === 'object') {
