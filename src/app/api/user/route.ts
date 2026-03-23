@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ensureUser, updateNickname } from '@/lib/user';
 import { createSession, getSessionUser, sessionCookieOptions } from '@/lib/session';
-import { queryD1 } from '@/lib/d1';
+import { queryD1, executeD1 } from '@/lib/d1';
 
 // POST /api/user - init or get session
 export async function POST(request: Request) {
