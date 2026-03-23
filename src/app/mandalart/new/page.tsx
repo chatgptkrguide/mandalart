@@ -32,7 +32,7 @@ function SparkleIcon({ className }: { className?: string }) {
 
 export default function NewMandalartPage() {
   const router = useRouter();
-  const { user, ready, updateNickname } = useUser();
+  const { user, ready, logout } = useUser();
   const [step, setStep] = useState<Step>('info');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -175,7 +175,7 @@ export default function NewMandalartPage() {
 
   return (
     <div className="min-h-screen">
-      <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+      <Header nickname={user?.nickname} onLogout={logout} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
         {/* Steps */}

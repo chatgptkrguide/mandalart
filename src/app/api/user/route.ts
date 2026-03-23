@@ -1,54 +1,60 @@
 import { NextResponse } from 'next/server';
-import { ensureUser, updateNickname } from '@/lib/user';
+import { ensureUser } from '@/lib/user';
 import { createSession, getSessionUser, sessionCookieOptions } from '@/lib/session';
-import { queryD1, executeD1 } from '@/lib/d1';
+import { queryD1 } from '@/lib/d1';
 
-// POST /api/user - init or get session
+// POST /api/user - login by nickname (find or create)
 export async function POST(request: Request) {
   try {
-    // Check if already has session
+    // Already logged in? Return current user
     const existing = await getSessionUser();
     if (existing) {
       await ensureUser(existing.userId, existing.nickname);
       return NextResponse.json({ user: existing });
     }
 
-    // Parse body
     const body = await request.json().catch(() => ({}));
-    const nickname = body.nickname || '익명';
-    const legacyUserId = body.legacyUserId || null;
+    const nickname = (body.nickname || '').trim();
 
-    // If legacy user exists in DB, adopt that identity
-    if (legacyUserId) {
-      const legacyUsers = await queryD1<{ id: string; nickname: string }>(
-        'SELECT id, nickname FROM users WHERE id = ?1',
-        [legacyUserId]
-      );
-      if (legacyUsers.length > 0) {
-        const lu = legacyUsers[0];
-        const token = await createSession(lu.id, lu.nickname);
-        const response = NextResponse.json({ user: { userId: lu.id, nickname: lu.nickname } });
-        response.cookies.set(sessionCookieOptions(token));
-        return response;
-      }
+    // Empty nickname = just checking session (no session found above)
+    if (!nickname) {
+      return NextResponse.json({ user: null }, { status: 200 });
     }
 
-    // New user
-    const userId = 'u_' + crypto.randomUUID();
-    const nick = nickname || '익명';
+    if (nickname.length > 20) {
+      return NextResponse.json({ error: '이름은 20자 이내로 입력하세요' }, { status: 400 });
+    }
 
-    await ensureUser(userId, nick);
+    // Find existing user by nickname
+    const users = await queryD1<{ id: string; nickname: string }>(
+      'SELECT id, nickname FROM users WHERE nickname = ?1 LIMIT 1',
+      [nickname]
+    );
+
+    let userId: string;
+    let nick: string;
+
+    if (users.length > 0) {
+      // Existing user
+      userId = users[0].id;
+      nick = users[0].nickname;
+    } else {
+      // New user
+      userId = 'u_' + crypto.randomUUID();
+      nick = nickname;
+      await ensureUser(userId, nick);
+    }
+
     const token = await createSession(userId, nick);
-
     const response = NextResponse.json({ user: { userId, nickname: nick } });
     response.cookies.set(sessionCookieOptions(token));
     return response;
-  } catch (err: unknown) {
-    return NextResponse.json({ error: '사용자 초기화 실패' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: '로그인 실패' }, { status: 500 });
   }
 }
 
-// PATCH /api/user - update nickname (session-protected)
+// PATCH /api/user - update nickname
 export async function PATCH(request: Request) {
   try {
     const session = await getSessionUser();
@@ -57,17 +63,30 @@ export async function PATCH(request: Request) {
     }
 
     const { nickname } = await request.json();
-    if (!nickname || typeof nickname !== 'string' || nickname.length > 20) {
-      return NextResponse.json({ error: '닉네임이 올바르지 않습니다' }, { status: 400 });
+    if (!nickname || typeof nickname !== 'string' || nickname.trim().length === 0 || nickname.length > 20) {
+      return NextResponse.json({ error: '이름이 올바르지 않습니다' }, { status: 400 });
     }
 
-    await updateNickname(session.userId, nickname);
+    const { updateNickname } = await import('@/lib/user');
+    await updateNickname(session.userId, nickname.trim());
 
-    const token = await createSession(session.userId, nickname);
+    const token = await createSession(session.userId, nickname.trim());
     const response = NextResponse.json({ ok: true });
     response.cookies.set(sessionCookieOptions(token));
     return response;
-  } catch (err: unknown) {
-    return NextResponse.json({ error: '닉네임 변경 실패' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: '변경 실패' }, { status: 500 });
   }
+}
+
+// DELETE /api/user - logout (clear session)
+export async function DELETE() {
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set({
+    name: 'mandalart_sid',
+    value: '',
+    maxAge: 0,
+    path: '/',
+  });
+  return response;
 }

@@ -11,7 +11,7 @@ interface LogEntry { id: string; action: string; cell_content: string; created_a
 export default function LogPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user, ready, updateNickname } = useUser();
+  const { user, ready, logout } = useUser();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +39,7 @@ export default function LogPage({ params }: { params: Promise<{ id: string }> })
 
   return (
     <div className="min-h-screen">
-      <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+      <Header nickname={user?.nickname} onLogout={logout} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <button onClick={() => router.push(`/mandalart/${id}`)} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] mb-6 block">

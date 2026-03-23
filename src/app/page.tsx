@@ -20,12 +20,16 @@ interface Mandalart {
 
 export default function HomePage() {
   const router = useRouter();
-  const { user, ready, updateNickname } = useUser();
+  const { user, ready, login, logout } = useUser();
   const [mine, setMine] = useState<Mandalart[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
+  // Load mandalarts when user is logged in
   useEffect(() => {
     if (!ready || !user) return;
+    setLoading(true);
     fetch('/api/mandalarts')
       .then(r => r.json())
       .then(d => setMine(d.mandalarts || []))
@@ -33,17 +37,62 @@ export default function HomePage() {
       .finally(() => setLoading(false));
   }, [ready, user]);
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nameInput.trim()) return;
+    setLoginLoading(true);
+    await login(nameInput.trim());
+    setLoginLoading(false);
+  };
+
   if (!ready) return null;
 
+  // Not logged in → name input screen
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="w-full max-w-sm anim-fade">
+          <div className="text-center mb-8">
+            <img src="/logo-64.png" alt="만다라트" className="w-14 h-14 rounded-xl mx-auto mb-4" />
+            <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>만다라트</h1>
+            <p className="text-sm text-[var(--color-text-muted)] mt-2">이름을 입력하면 바로 시작할 수 있어요</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-3">
+            <input
+              value={nameInput}
+              onChange={e => setNameInput(e.target.value)}
+              className="input text-center text-lg"
+              placeholder="이름 입력"
+              autoFocus
+              maxLength={20}
+            />
+            <button
+              type="submit"
+              disabled={!nameInput.trim() || loginLoading}
+              className="btn btn-fill btn-lg w-full"
+            >
+              {loginLoading ? '접속 중...' : '시작하기'}
+            </button>
+          </form>
+
+          <p className="text-xs text-[var(--color-text-muted)] text-center mt-4 leading-relaxed">
+            같은 이름으로 어디서든 내 만다라트에 접근할 수 있어요
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Logged in → dashboard
   return (
     <div className="min-h-screen">
-      <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+      <Header nickname={user.nickname} onLogout={logout} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Top bar */}
         <div className="flex items-end justify-between mb-6 sm:mb-8">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold leading-tight">내 만다라트</h1>
+            <h1 className="text-xl sm:text-2xl font-bold leading-tight">{user.nickname}님의 만다라트</h1>
             <p className="text-sm text-[var(--color-text-muted)] mt-1">
               {mine.length > 0 ? `${mine.length}개 진행 중` : '목표를 만들어보세요'}
             </p>

@@ -25,7 +25,7 @@ interface MandalartData {
 export default function MandalartDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user, ready, updateNickname } = useUser();
+  const { user, ready, logout } = useUser();
   const [m, setM] = useState<MandalartData | null>(null);
   const [cells, setCells] = useState<Cell[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
@@ -95,7 +95,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
   if (!ready || loading || !m) {
     return (
       <div className="min-h-screen">
-        <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+        <Header nickname={user?.nickname} onLogout={logout} />
         <div className="flex justify-center py-20">
           <div className="w-7 h-7 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
         </div>
@@ -117,7 +117,7 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="min-h-screen">
-      <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+      <Header nickname={user?.nickname} onLogout={logout} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Title bar */}

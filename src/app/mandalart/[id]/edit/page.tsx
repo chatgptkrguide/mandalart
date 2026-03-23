@@ -24,7 +24,7 @@ interface Cell { id: string; position: number; content: string; cell_type: strin
 export default function EditMandalartPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { user, ready, updateNickname } = useUser();
+  const { user, ready, logout } = useUser();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -179,7 +179,7 @@ export default function EditMandalartPage({ params }: { params: Promise<{ id: st
   if (!ready || loading) {
     return (
       <div className="min-h-screen">
-        <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+        <Header nickname={user?.nickname} onLogout={logout} />
         <div className="flex justify-center py-20">
           <div className="w-7 h-7 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
         </div>
@@ -196,7 +196,7 @@ export default function EditMandalartPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-screen">
-      <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+      <Header nickname={user?.nickname} onLogout={logout} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-between mb-6">

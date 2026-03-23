@@ -1,91 +1,59 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-interface UserInfo {
+export interface UserInfo {
   userId: string;
   nickname: string;
-}
-
-const OLD_STORAGE_KEY = 'mandalart_user';
-const NICK_KEY = 'mandalart_nick';
-
-const adjectives = ['빠른', '느긋한', '용감한', '조용한', '밝은', '따뜻한', '시원한', '대담한', '꾸준한', '활발한'];
-const nouns = ['고양이', '토끼', '여우', '곰', '사슴', '다람쥐', '올빼미', '펭귄', '돌고래', '나무늘보'];
-
-function randomNickname(): string {
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  return `${adj} ${noun}`;
 }
 
 export function useUser() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [ready, setReady] = useState(false);
-  const retryCount = useRef(0);
 
+  // Check if already logged in (session cookie)
   useEffect(() => {
-    let legacyUserId: string | null = null;
-    let legacyNickname: string | null = null;
-    try {
-      const stored = localStorage.getItem(OLD_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.id) {
-          legacyUserId = parsed.id;
-          legacyNickname = parsed.nickname || null;
-        }
-      }
-    } catch {}
-
-    let savedNick: string | null = null;
-    try { savedNick = localStorage.getItem(NICK_KEY); } catch {}
-    const nickname = savedNick || legacyNickname || randomNickname();
-
-    const initUser = () => {
-      fetch('/api/user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname, legacyUserId }),
+    fetch('/api/user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: '' }), // empty = just check session
+    })
+      .then(r => {
+        if (r.ok) return r.json();
+        return null;
       })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
-        .then(data => {
-          if (data.user) {
-            setUser(data.user);
-            try {
-              localStorage.setItem(NICK_KEY, data.user.nickname);
-              localStorage.removeItem(OLD_STORAGE_KEY);
-            } catch {}
-          }
-          setReady(true);
-        })
-        .catch(() => {
-          retryCount.current++;
-          if (retryCount.current < 3) {
-            setTimeout(initUser, 1000 * retryCount.current);
-          } else {
-            setReady(true); // Give up after 3 retries
-          }
-        });
-    };
-
-    initUser();
+      .then(data => {
+        if (data?.user) setUser(data.user);
+      })
+      .catch(() => {})
+      .finally(() => setReady(true));
   }, []);
 
-  const updateNickname = useCallback((nickname: string) => {
-    if (!user) return;
-    setUser(prev => prev ? { ...prev, nickname } : prev);
-    try { localStorage.setItem(NICK_KEY, nickname); } catch {}
+  // Login with name
+  const login = useCallback(async (nickname: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (data.user) {
+        setUser(data.user);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
 
-    fetch('/api/user', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname }),
-    }).catch(() => {});
-  }, [user]);
+  // Logout
+  const logout = useCallback(async () => {
+    await fetch('/api/user', { method: 'DELETE' }).catch(() => {});
+    setUser(null);
+  }, []);
 
-  return { user, ready, updateNickname };
+  return { user, ready, login, logout };
 }

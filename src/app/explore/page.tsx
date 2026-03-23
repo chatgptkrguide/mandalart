@@ -18,7 +18,7 @@ interface Mandalart {
 }
 
 export default function ExplorePage() {
-  const { user, ready, updateNickname } = useUser();
+  const { user, ready, logout } = useUser();
   const [list, setList] = useState<Mandalart[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +34,7 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen">
-      <Header nickname={user?.nickname} onNicknameChange={updateNickname} />
+      <Header nickname={user?.nickname} onLogout={logout} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6 sm:mb-8">
