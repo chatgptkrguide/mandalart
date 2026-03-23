@@ -7,6 +7,8 @@ interface UserInfo {
   nickname: string;
 }
 
+const OLD_STORAGE_KEY = 'mandalart_user';
+
 const adjectives = ['빠른', '느긋한', '용감한', '조용한', '밝은', '따뜻한', '시원한', '대담한', '꾸준한', '활발한'];
 const nouns = ['고양이', '토끼', '여우', '곰', '사슴', '다람쥐', '올빼미', '펭귄', '돌고래', '나무늘보'];
 
@@ -21,20 +23,36 @@ export function useUser() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // POST /api/user will either:
-    // - return existing session user (from cookie)
-    // - create new user + set session cookie
-    const nickname = randomNickname();
+    // Check for legacy localStorage user (migration from pre-session system)
+    let legacyUserId: string | null = null;
+    let legacyNickname: string | null = null;
+    try {
+      const stored = localStorage.getItem(OLD_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.id) {
+          legacyUserId = parsed.id;
+          legacyNickname = parsed.nickname || null;
+        }
+      }
+    } catch {}
+
+    const nickname = legacyNickname || randomNickname();
 
     fetch('/api/user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname }),
+      body: JSON.stringify({
+        nickname,
+        legacyUserId, // Send old ID for migration
+      }),
     })
       .then(r => r.json())
       .then(data => {
         if (data.user) {
           setUser(data.user);
+          // Clear legacy storage after successful migration
+          try { localStorage.removeItem(OLD_STORAGE_KEY); } catch {}
         }
       })
       .catch(() => {})
