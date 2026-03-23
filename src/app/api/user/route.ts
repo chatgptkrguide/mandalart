@@ -38,6 +38,20 @@ export async function POST(request: Request) {
     const nick = nickname || '익명';
 
     await ensureUser(userId, nick);
+
+    // Auto-merge: if there's an orphaned user with same nickname who has mandalarts, transfer them
+    const orphans = await queryD1<{ id: string }>(
+      `SELECT DISTINCT u.id FROM users u
+       JOIN mandalarts m ON m.user_id = u.id
+       WHERE u.nickname = ?1 AND u.id != ?2`,
+      [nick, userId]
+    );
+    for (const orphan of orphans) {
+      await executeD1('UPDATE mandalarts SET user_id = ?1 WHERE user_id = ?2', [userId, orphan.id]);
+      await executeD1('UPDATE task_completions SET user_id = ?1 WHERE user_id = ?2', [userId, orphan.id]);
+      await executeD1('UPDATE activity_logs SET user_id = ?1 WHERE user_id = ?2', [userId, orphan.id]);
+    }
+
     const token = await createSession(userId, nick);
 
     const response = NextResponse.json({ user: { userId, nickname: nick } });

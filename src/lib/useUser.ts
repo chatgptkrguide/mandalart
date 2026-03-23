@@ -8,6 +8,7 @@ interface UserInfo {
 }
 
 const OLD_STORAGE_KEY = 'mandalart_user';
+const NICK_KEY = 'mandalart_nick';
 
 const adjectives = ['빠른', '느긋한', '용감한', '조용한', '밝은', '따뜻한', '시원한', '대담한', '꾸준한', '활발한'];
 const nouns = ['고양이', '토끼', '여우', '곰', '사슴', '다람쥐', '올빼미', '펭귄', '돌고래', '나무늘보'];
@@ -37,7 +38,10 @@ export function useUser() {
       }
     } catch {}
 
-    const nickname = legacyNickname || randomNickname();
+    // Try saved nickname, then legacy, then random
+    let savedNick: string | null = null;
+    try { savedNick = localStorage.getItem(NICK_KEY); } catch {}
+    const nickname = savedNick || legacyNickname || randomNickname();
 
     fetch('/api/user', {
       method: 'POST',
@@ -51,8 +55,11 @@ export function useUser() {
       .then(data => {
         if (data.user) {
           setUser(data.user);
-          // Clear legacy storage after successful migration
-          try { localStorage.removeItem(OLD_STORAGE_KEY); } catch {}
+          // Save nickname for future sessions
+          try {
+            localStorage.setItem(NICK_KEY, data.user.nickname);
+            localStorage.removeItem(OLD_STORAGE_KEY);
+          } catch {}
         }
       })
       .catch(() => {})
@@ -62,6 +69,7 @@ export function useUser() {
   const updateNickname = useCallback((nickname: string) => {
     if (!user) return;
     setUser(prev => prev ? { ...prev, nickname } : prev);
+    try { localStorage.setItem(NICK_KEY, nickname); } catch {}
 
     fetch('/api/user', {
       method: 'PATCH',
