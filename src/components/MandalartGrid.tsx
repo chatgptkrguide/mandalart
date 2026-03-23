@@ -65,7 +65,7 @@ export default function MandalartGrid({ cells, completions, startDate, isOwner, 
             title={has ? cell.content : ''}
           >
             {has ? (
-              <span className="w-full px-0.5 overflow-hidden text-ellipsis line-clamp-2 leading-tight">
+              <span className="w-full px-px leading-tight">
                 {cell.content}
               </span>
             ) : null}
