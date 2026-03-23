@@ -23,14 +23,16 @@ export default function LogPage({ params }: { params: Promise<{ id: string }> })
       .finally(() => setLoading(false));
   }, [id]);
 
-  const grouped = logs.reduce<Record<string, LogEntry[]>>((acc, log) => {
+  const groupedMap = logs.reduce<Record<string, LogEntry[]>>((acc, log) => {
     const d = log.created_at.split('T')[0];
     (acc[d] ||= []).push(log);
     return acc;
   }, {});
+  // Sort by date descending
+  const grouped = Object.entries(groupedMap).sort(([a], [b]) => b.localeCompare(a));
 
   const completedCount = logs.filter(l => l.action === 'completed').length;
-  const activeDays = Object.keys(grouped).length;
+  const activeDays = grouped.length;
   const uniqueItems = new Set(logs.filter(l => l.action === 'completed').map(l => l.cell_content)).size;
 
   if (!ready) return null;
@@ -71,7 +73,7 @@ export default function LogPage({ params }: { params: Promise<{ id: string }> })
 
             {/* Timeline */}
             <div className="space-y-8">
-              {Object.entries(grouped).map(([date, dayLogs]) => (
+              {grouped.map(([date, dayLogs]) => (
                 <div key={date}>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]" />

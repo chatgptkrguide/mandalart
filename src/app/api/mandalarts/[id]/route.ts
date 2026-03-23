@@ -183,6 +183,10 @@ export async function DELETE(
     return NextResponse.json({ error: '삭제 권한이 없습니다' }, { status: 403 });
   }
 
+  // Delete dependent data first, then mandalart
+  await executeD1('DELETE FROM activity_logs WHERE mandalart_id = ?1', [id]);
+  await executeD1('DELETE FROM task_completions WHERE mandalart_id = ?1', [id]);
+  await executeD1('DELETE FROM mandalart_cells WHERE mandalart_id = ?1', [id]);
   await executeD1('DELETE FROM mandalarts WHERE id = ?1', [id]);
   return NextResponse.json({ ok: true });
 }

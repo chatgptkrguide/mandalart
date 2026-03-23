@@ -67,12 +67,9 @@ export default function MandalartDetailPage({ params }: { params: Promise<{ id: 
         body: JSON.stringify({ cellId, action: isDone ? 'uncomplete' : 'complete' }),
       });
       if (!res.ok) {
-        // Revert on failure
-        await load();
-      } else {
-        // Sync with server
-        await load();
+        await load(); // Revert on failure
       }
+      // Success: keep optimistic update, no reload needed
     } catch {
       await load(); // Revert on network error
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UserInfo {
   userId: string;
@@ -22,9 +22,9 @@ function randomNickname(): string {
 export function useUser() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [ready, setReady] = useState(false);
+  const retryCount = useRef(0);
 
   useEffect(() => {
-    // Check for legacy localStorage user (migration from pre-session system)
     let legacyUserId: string | null = null;
     let legacyNickname: string | null = null;
     try {
@@ -38,32 +38,41 @@ export function useUser() {
       }
     } catch {}
 
-    // Try saved nickname, then legacy, then random
     let savedNick: string | null = null;
     try { savedNick = localStorage.getItem(NICK_KEY); } catch {}
     const nickname = savedNick || legacyNickname || randomNickname();
 
-    fetch('/api/user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nickname,
-        legacyUserId, // Send old ID for migration
-      }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (data.user) {
-          setUser(data.user);
-          // Save nickname for future sessions
-          try {
-            localStorage.setItem(NICK_KEY, data.user.nickname);
-            localStorage.removeItem(OLD_STORAGE_KEY);
-          } catch {}
-        }
+    const initUser = () => {
+      fetch('/api/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, legacyUserId }),
       })
-      .catch(() => {})
-      .finally(() => setReady(true));
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => {
+          if (data.user) {
+            setUser(data.user);
+            try {
+              localStorage.setItem(NICK_KEY, data.user.nickname);
+              localStorage.removeItem(OLD_STORAGE_KEY);
+            } catch {}
+          }
+          setReady(true);
+        })
+        .catch(() => {
+          retryCount.current++;
+          if (retryCount.current < 3) {
+            setTimeout(initUser, 1000 * retryCount.current);
+          } else {
+            setReady(true); // Give up after 3 retries
+          }
+        });
+    };
+
+    initUser();
   }, []);
 
   const updateNickname = useCallback((nickname: string) => {
